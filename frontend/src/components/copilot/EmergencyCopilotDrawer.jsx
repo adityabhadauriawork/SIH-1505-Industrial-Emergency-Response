@@ -10,6 +10,7 @@ export default function EmergencyCopilotDrawer({
   impactResult,
   evacuationPlan,
   resourcePlan,
+  userRole = 'HSE_COMMANDER',
   onNavigateTab
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -49,6 +50,7 @@ export default function EmergencyCopilotDrawer({
     try {
       const res = await api.chatWithCopilot({
         query: q.trim(),
+        user_role: userRole,
         history: messages.slice(-6),
         simulation_result: simulationResult,
         impact_result: impactResult,
@@ -81,12 +83,22 @@ export default function EmergencyCopilotDrawer({
     }
   };
 
-  const quickPrompts = [
+  const quickPrompts = userRole === 'FIELD_RESPONDER' ? [
+    'What should I do right now?',
+    'Where is my safe route?',
+    'What PPE is required?',
+    'What is the wind standoff?'
+  ] : userRole === 'EXECUTIVE_AUTHORITY' ? [
+    'What is the current status?',
+    'Who approved this plan?',
+    'How many workers are affected?',
+    'Generate executive brief'
+  ] : [
     'What is happening right now?',
-    'Why is AP-1 unsafe?',
+    'Why was AP-3 selected?',
     'How many workers are affected?',
     'What if release rate doubles?',
-    'Generate HSE briefing'
+    'Who approved this plan?'
   ];
 
   return (

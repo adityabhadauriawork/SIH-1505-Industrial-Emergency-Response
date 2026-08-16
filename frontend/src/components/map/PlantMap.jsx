@@ -384,23 +384,53 @@ export default function PlantMap({
                 }
               }}
             >
-              <Popup className="leaflet-dark-popup">
-                <div className="font-mono text-xs p-1 space-y-1 text-slate-200">
-                  <div className="font-bold text-white flex justify-between border-b border-slate-700 pb-1">
-                    <span>{asset.id} — {asset.name}</span>
-                    <span className="text-amber-400 font-bold">{asset.criticality}</span>
+              <Popup className="leaflet-dark-popup" maxWidth={320} minWidth={240}>
+                <div className="font-mono text-xs space-y-2 text-slate-200 p-0.5">
+                  <div className="flex items-center justify-between border-b border-slate-700/80 pb-1.5">
+                    <div className="flex items-center space-x-1.5">
+                      <span className="font-extrabold text-cyan-400 text-sm">{asset.id}</span>
+                      {isSource && (
+                        <span className="bg-red-500/30 text-red-300 px-1.5 py-0.2 rounded text-[9px] font-bold border border-red-500/50 animate-pulse">
+                          EPICENTER
+                        </span>
+                      )}
+                    </div>
+                    <span className="bg-slate-800 text-amber-300 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-700">
+                      {asset.criticality}
+                    </span>
                   </div>
-                  <div>Sector: {asset.sector}</div>
-                  <div>Type: {asset.type}</div>
-                  {asset.chemical_id && <div>Chemical: <span className="text-rose-400 font-bold">{asset.chemical_id}</span></div>}
-                  {asset.capacity_m3 && <div>Capacity: {asset.capacity_m3.toLocaleString()} m³ (Fill: {asset.current_fill_pct}%)</div>}
-                  <div>Operating Press: {asset.operating_pressure_bar || 1.0} bar • Temp: {asset.operating_temp_c || 25}°C</div>
-                  <div className="pt-1">
+
+                  <div>
+                    <div className="font-bold text-white text-xs">{asset.name}</div>
+                    <div className="text-[10px] text-slate-400">{asset.sector} • {asset.type}</div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-1.5 text-[10px] bg-slate-950/80 p-2 rounded-lg border border-slate-800">
+                    <div>
+                      <span className="text-slate-500 block text-[9px]">CHEMICAL</span>
+                      <span className="text-rose-400 font-bold truncate block">{asset.chemical_id || 'Hydrocarbon / Toxic'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[9px]">FILL LEVEL</span>
+                      <span className="text-cyan-300 font-bold">{asset.current_fill_pct || 75}% ({asset.capacity_m3?.toLocaleString() || '5,000'} m³)</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[9px]">OPERATING PRESSURE</span>
+                      <span className="text-slate-200">{asset.operating_pressure_bar || 1.0} bar</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[9px]">TEMPERATURE</span>
+                      <span className="text-slate-200">{asset.operating_temp_c || 25}°C</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-0.5">
                     <button
+                      type="button"
                       onClick={() => onSelectAsset && onSelectAsset(asset.id)}
-                      className="w-full bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-bold py-1 rounded transition-colors"
+                      className="w-full bg-cyan-600/30 hover:bg-cyan-600/50 text-cyan-200 border border-cyan-500/40 text-[10px] font-bold py-1.5 rounded-lg transition-all text-center tracking-wide"
                     >
-                      SELECT FOR SIMULATION
+                      SELECT FOR SCENARIO
                     </button>
                   </div>
                 </div>
@@ -416,16 +446,24 @@ export default function PlantMap({
             position={ap.coordinates}
             icon={apIcon(ap)}
           >
-            <Popup className="leaflet-dark-popup">
-              <div className="font-mono text-xs p-1 space-y-1 text-slate-200">
-                <div className="font-bold text-white border-b border-slate-700 pb-1 flex justify-between">
-                  <span>{ap.name}</span>
-                  <span className={ap.status === 'SAFE' ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
+            <Popup className="leaflet-dark-popup" maxWidth={280} minWidth={220}>
+              <div className="font-mono text-xs space-y-1.5 text-slate-200 p-0.5">
+                <div className="flex items-center justify-between border-b border-slate-700/80 pb-1">
+                  <span className="font-bold text-white">{ap.name}</span>
+                  <span className={`px-2 py-0.2 rounded text-[9px] font-bold border ${
+                    ap.status === 'SAFE' 
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50' 
+                      : 'bg-red-500/20 text-red-300 border-red-500/50'
+                  }`}>
                     {ap.status}
                   </span>
                 </div>
-                <div>Capacity: {ap.capacity} Personnel</div>
-                <div className="text-[11px] text-slate-400">{ap.equipment}</div>
+                <div className="text-[11px] text-slate-300">
+                  Capacity: <b className="text-cyan-300">{ap.capacity} Personnel</b>
+                </div>
+                <div className="text-[10px] text-slate-400 bg-slate-950/80 p-1.5 rounded border border-slate-800">
+                  {ap.equipment}
+                </div>
               </div>
             </Popup>
           </Marker>
@@ -438,10 +476,17 @@ export default function PlantMap({
             position={g.coordinates}
             icon={gateIcon(g)}
           >
-            <Popup className="leaflet-dark-popup">
-              <div className="font-mono text-xs p-1 text-slate-200">
-                <div className="font-bold text-white">{g.name}</div>
-                <div className="text-emerald-400 font-bold">Status: {g.status}</div>
+            <Popup className="leaflet-dark-popup" maxWidth={260} minWidth={200}>
+              <div className="font-mono text-xs space-y-1 text-slate-200 p-0.5">
+                <div className="flex items-center justify-between border-b border-slate-700/80 pb-1">
+                  <span className="font-bold text-white">{g.name}</span>
+                  <span className="bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded text-[9px] font-bold border border-emerald-500/50">
+                    {g.status}
+                  </span>
+                </div>
+                <div className="text-[10px] text-slate-400">
+                  Perimeter Logistics & Emergency Evacuation Gate
+                </div>
               </div>
             </Popup>
           </Marker>
@@ -471,11 +516,20 @@ export default function PlantMap({
             position={res.coordinates}
             icon={resourceIcon(res)}
           >
-            <Popup className="leaflet-dark-popup">
-              <div className="font-mono text-xs p-1 space-y-1 text-slate-200">
-                <div className="font-bold text-white border-b border-slate-700 pb-1">{res.name}</div>
-                <div className="text-cyan-400">Stationed: {res.stationed_at} • Crew: {res.crew_count}</div>
-                <div className="text-[11px] text-slate-400">{res.capacity_details}</div>
+            <Popup className="leaflet-dark-popup" maxWidth={280} minWidth={220}>
+              <div className="font-mono text-xs space-y-1.5 text-slate-200 p-0.5">
+                <div className="flex items-center justify-between border-b border-slate-700/80 pb-1">
+                  <span className="font-bold text-white">{res.name}</span>
+                  <span className="bg-indigo-500/20 text-indigo-300 px-1.5 py-0.2 rounded text-[9px] font-bold border border-indigo-500/50">
+                    ACTIVE
+                  </span>
+                </div>
+                <div className="text-[10px] text-cyan-300">
+                  Stationed: {res.stationed_at} • Crew: {res.crew_count}
+                </div>
+                <div className="text-[10px] text-slate-400 bg-slate-950/80 p-1.5 rounded border border-slate-800">
+                  {res.capacity_details}
+                </div>
               </div>
             </Popup>
           </Marker>

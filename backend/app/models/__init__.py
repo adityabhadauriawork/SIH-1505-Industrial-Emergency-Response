@@ -14,6 +14,7 @@ from app.models.scenario import ScenarioPresetModel, IncidentLogModel
 from app.models.authorization import AuthorizationRecordModel
 from app.models.analytics import HistoricalIncidentModel
 from app.models.predictive import AssetHealthModel
+from app.models.audit import DecisionAuditModel
 
 __all__ = [
     "PlantModel",
@@ -31,4 +32,5 @@ __all__ = [
     "AuthorizationRecordModel",
     "HistoricalIncidentModel",
     "AssetHealthModel",
+    "DecisionAuditModel",
 ]

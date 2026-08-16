@@ -8,6 +8,7 @@ class CopilotMessage(BaseModel):
 
 class CopilotChatRequest(BaseModel):
     query: str
+    user_role: Optional[str] = "HSE_COMMANDER"  # FIELD_RESPONDER, HSE_COMMANDER, PLANT_MANAGER, DISTRICT_AUTHORITY, EXECUTIVE_AUTHORITY
     history: List[CopilotMessage] = []
     simulation_result: Optional[Dict[str, Any]] = None
     impact_result: Optional[Dict[str, Any]] = None

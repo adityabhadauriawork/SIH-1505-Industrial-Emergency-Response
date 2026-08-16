@@ -2,9 +2,26 @@ import React, { useState } from 'react';
 import { 
   GitCompare, ArrowRight, ShieldAlert, AlertTriangle, 
   Wind, Droplet, Flame, RefreshCw, Zap, Navigation, 
-  ShieldCheck, Layers, ChevronRight, TrendingUp, TrendingDown 
+  ShieldCheck, Layers, ChevronRight, Compass 
 } from 'lucide-react';
 import { api } from '../../services/api';
+
+const CARDINAL_BEARINGS = [
+  { label: 'N', deg: 0 },
+  { label: 'NE', deg: 45 },
+  { label: 'E', deg: 90 },
+  { label: 'SE', deg: 135 },
+  { label: 'S', deg: 180 },
+  { label: 'SW', deg: 225 },
+  { label: 'W', deg: 270 },
+  { label: 'NW', deg: 315 }
+];
+
+function degToCardinal(deg) {
+  const norm = ((deg % 360) + 360) % 360;
+  const idx = Math.round(norm / 45) % 8;
+  return CARDINAL_BEARINGS[idx].label;
+}
 
 export default function WhatIfComparison({ 
   assets = [], 
@@ -25,14 +42,14 @@ export default function WhatIfComparison({
   });
 
   const [scenarioB, setScenarioB] = useState({
-    label: 'Scenario B (Escalation)',
+    label: 'Scenario B (Wind & Rate Shift)',
     asset_id: currentSimulation?.source_asset_id || 'T-04',
     chemical_id: currentSimulation?.chemical_id || 'CHEM-NH3',
     incident_type: currentSimulation?.incident_type || 'PIPELINE_LEAK',
-    release_rate_kg_s: (currentSimulation?.effective_release_rate_kg_s || 15.0) * 2.0,
+    release_rate_kg_s: (currentSimulation?.effective_release_rate_kg_s || 15.0) * 1.5,
     release_duration_min: 30,
-    wind_speed_kmh: currentSimulation?.wind_speed_kmh || 8.0,
-    wind_direction_deg: currentSimulation?.wind_direction_deg || 45.0,
+    wind_speed_kmh: currentSimulation?.wind_speed_kmh || 12.0,
+    wind_direction_deg: 225.0,
     ambient_temp_c: currentSimulation?.ambient_temp_c || 32.0
   });
 
@@ -62,6 +79,11 @@ export default function WhatIfComparison({
   const b = comparisonResult?.scenario_b;
   const deltas = comparisonResult?.deltas;
 
+  const cardA = degToCardinal(scenarioA.wind_direction_deg);
+  const plumeCardA = degToCardinal((scenarioA.wind_direction_deg + 180) % 360);
+  const cardB = degToCardinal(scenarioB.wind_direction_deg);
+  const plumeCardB = degToCardinal((scenarioB.wind_direction_deg + 180) % 360);
+
   return (
     <div className="space-y-4 font-mono text-xs text-slate-200">
       
@@ -70,14 +92,14 @@ export default function WhatIfComparison({
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
             <GitCompare className="w-4 h-4 text-cyan-400" />
-            What-If Multi-Scenario Comparative Simulation
+            What-If Comparative Physics Simulation & Bearing Analysis
           </h3>
           <span className="text-[10px] text-slate-400 bg-slate-800 px-2.5 py-0.5 rounded border border-slate-700">
-            Prototype Gaussian Dispersion + Dijkstra Routing
+            Authoritative Gaussian Plume + Dijkstra Solver
           </span>
         </div>
         <p className="text-[11px] text-slate-400">
-          Run independent physics-based dispersion simulations simultaneously to compare toxic reach, population exposure, road severance, and suppression demands.
+          Vary release rate, wind speed, and meteorological wind direction independently for Scenario A vs Scenario B. Changes propagate directly through the atmospheric dispersion and evacuation routing engines.
         </p>
       </div>
 
@@ -144,8 +166,8 @@ export default function WhatIfComparison({
 
             <div>
               <div className="flex justify-between text-slate-400 mb-0.5">
-                <span>WIND SPEED & BEARING</span>
-                <span className="text-cyan-400 font-bold">{scenarioA.wind_speed_kmh} km/h • {scenarioA.wind_direction_deg}°</span>
+                <span>WIND SPEED</span>
+                <span className="text-cyan-400 font-bold">{scenarioA.wind_speed_kmh} km/h</span>
               </div>
               <input
                 type="range"
@@ -156,6 +178,56 @@ export default function WhatIfComparison({
                 onChange={(e) => setScenarioA({ ...scenarioA, wind_speed_kmh: parseFloat(e.target.value) })}
                 className="w-full h-1.5 bg-slate-800 rounded appearance-none cursor-pointer accent-cyan-400"
               />
+            </div>
+          </div>
+
+          {/* Wind Direction Control with Cardinal Buttons & Bearing Slider */}
+          <div className="space-y-1.5 bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
+            <div className="flex justify-between items-center text-[10px]">
+              <span className="text-slate-400 font-bold flex items-center gap-1">
+                <Compass className="w-3.5 h-3.5 text-cyan-400" />
+                WIND DIRECTION (BEARING)
+              </span>
+              <span className="text-cyan-300 font-bold bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-500/40">
+                FROM {cardA} ({scenarioA.wind_direction_deg.toFixed(0)}°)
+              </span>
+            </div>
+
+            {/* Cardinal Quick Select Buttons */}
+            <div className="grid grid-cols-8 gap-1">
+              {CARDINAL_BEARINGS.map((cb) => {
+                const isSelected = Math.abs(scenarioA.wind_direction_deg - cb.deg) < 15 || (cb.deg === 0 && scenarioA.wind_direction_deg >= 345);
+                return (
+                  <button
+                    key={cb.label}
+                    type="button"
+                    onClick={() => setScenarioA({ ...scenarioA, wind_direction_deg: cb.deg })}
+                    className={`py-1 text-[10px] font-bold rounded transition-all ${
+                      isSelected
+                        ? 'bg-cyan-500 text-slate-950 shadow-sm shadow-cyan-500/50'
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                    }`}
+                  >
+                    {cb.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <input
+              type="range"
+              min="0"
+              max="359"
+              step="1"
+              value={scenarioA.wind_direction_deg}
+              onChange={(e) => setScenarioA({ ...scenarioA, wind_direction_deg: parseFloat(e.target.value) })}
+              className="w-full h-1.5 bg-slate-800 rounded appearance-none cursor-pointer accent-cyan-400"
+            />
+
+            {/* Explicit Meteorological & Plume Convention Label */}
+            <div className="text-[9px] flex justify-between items-center text-slate-400 bg-slate-950/60 p-1.5 rounded border border-slate-800">
+              <span><b>METEOROLOGY:</b> FROM {scenarioA.wind_direction_deg.toFixed(0)}° ({cardA})</span>
+              <span className="text-cyan-400 font-bold">PLUME: TOWARD {((scenarioA.wind_direction_deg + 180) % 360).toFixed(0)}° ({plumeCardA})</span>
             </div>
           </div>
         </div>
@@ -220,8 +292,8 @@ export default function WhatIfComparison({
 
             <div>
               <div className="flex justify-between text-slate-400 mb-0.5">
-                <span>WIND SPEED & BEARING</span>
-                <span className="text-amber-400 font-bold">{scenarioB.wind_speed_kmh} km/h • {scenarioB.wind_direction_deg}°</span>
+                <span>WIND SPEED</span>
+                <span className="text-amber-400 font-bold">{scenarioB.wind_speed_kmh} km/h</span>
               </div>
               <input
                 type="range"
@@ -232,6 +304,56 @@ export default function WhatIfComparison({
                 onChange={(e) => setScenarioB({ ...scenarioB, wind_speed_kmh: parseFloat(e.target.value) })}
                 className="w-full h-1.5 bg-slate-800 rounded appearance-none cursor-pointer accent-amber-400"
               />
+            </div>
+          </div>
+
+          {/* Wind Direction Control with Cardinal Buttons & Bearing Slider */}
+          <div className="space-y-1.5 bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
+            <div className="flex justify-between items-center text-[10px]">
+              <span className="text-slate-400 font-bold flex items-center gap-1">
+                <Compass className="w-3.5 h-3.5 text-amber-400" />
+                WIND DIRECTION (BEARING)
+              </span>
+              <span className="text-amber-300 font-bold bg-amber-950/80 px-2 py-0.5 rounded border border-amber-500/40">
+                FROM {cardB} ({scenarioB.wind_direction_deg.toFixed(0)}°)
+              </span>
+            </div>
+
+            {/* Cardinal Quick Select Buttons */}
+            <div className="grid grid-cols-8 gap-1">
+              {CARDINAL_BEARINGS.map((cb) => {
+                const isSelected = Math.abs(scenarioB.wind_direction_deg - cb.deg) < 15 || (cb.deg === 0 && scenarioB.wind_direction_deg >= 345);
+                return (
+                  <button
+                    key={cb.label}
+                    type="button"
+                    onClick={() => setScenarioB({ ...scenarioB, wind_direction_deg: cb.deg })}
+                    className={`py-1 text-[10px] font-bold rounded transition-all ${
+                      isSelected
+                        ? 'bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/50'
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                    }`}
+                  >
+                    {cb.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <input
+              type="range"
+              min="0"
+              max="359"
+              step="1"
+              value={scenarioB.wind_direction_deg}
+              onChange={(e) => setScenarioB({ ...scenarioB, wind_direction_deg: parseFloat(e.target.value) })}
+              className="w-full h-1.5 bg-slate-800 rounded appearance-none cursor-pointer accent-amber-400"
+            />
+
+            {/* Explicit Meteorological & Plume Convention Label */}
+            <div className="text-[9px] flex justify-between items-center text-slate-400 bg-slate-950/60 p-1.5 rounded border border-slate-800">
+              <span><b>METEOROLOGY:</b> FROM {scenarioB.wind_direction_deg.toFixed(0)}° ({cardB})</span>
+              <span className="text-amber-400 font-bold">PLUME: TOWARD {((scenarioB.wind_direction_deg + 180) % 360).toFixed(0)}° ({plumeCardB})</span>
             </div>
           </div>
         </div>

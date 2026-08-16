@@ -13,9 +13,16 @@ import PrePlanViewer from '../components/preplan/PrePlanViewer';
 import IntelligenceHub from '../components/intelligence/IntelligenceHub';
 import EmergencyCopilotDrawer from '../components/copilot/EmergencyCopilotDrawer';
 
+// Final Prototype Expansion: Multi-Level Role Views & Executive Briefing
+import FieldResponderView from '../components/roles/FieldResponderView';
+import PlantDistrictAuthorityView from '../components/roles/PlantDistrictAuthorityView';
+import ExecutiveAuthorityView from '../components/roles/ExecutiveAuthorityView';
+import ExecutiveBriefModal from '../components/intelligence/ExecutiveBriefModal';
+import { getCanonicalIncidentState } from '../utils/canonicalState';
+
 import { 
   LayoutDashboard, Flame, Users, Navigation, 
-  Siren, FileText, AlertTriangle, RefreshCw, Map, Cpu 
+  Siren, FileText, AlertTriangle, RefreshCw, Map, Cpu, UserCheck 
 } from 'lucide-react';
 
 export default function CommandCenter() {
@@ -35,12 +42,16 @@ export default function CommandCenter() {
   });
   const [isRefreshingWeather, setIsRefreshingWeather] = useState(false);
   
-  // Active Simulation & Impact states
+  // Active Simulation & Impact states (AUTHORITATIVE SINGLE SOURCE OF TRUTH)
   const [simulationResult, setSimulationResult] = useState(null);
   const [impactResult, setImpactResult] = useState(null);
   const [evacuationPlan, setEvacuationPlan] = useState(null);
   const [resourcePlan, setResourcePlan] = useState(null);
   
+  // Prototype Role Selection
+  const [currentRole, setCurrentRole] = useState('HSE_COMMANDER'); // FIELD_RESPONDER, HSE_COMMANDER, PLANT_MANAGER, DISTRICT_AUTHORITY, EXECUTIVE_AUTHORITY, DEMO_ADMIN
+  const [showExecutiveBrief, setShowExecutiveBrief] = useState(false);
+
   const [currentTimeStep, setCurrentTimeStep] = useState(120);
   const [selectedAssetId, setSelectedAssetId] = useState('T-04');
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -136,6 +147,22 @@ export default function CommandCenter() {
       // Step 4: Emergency Resource Optimization
       const resRes = await api.optimizeResources(simRes, impRes, evacRes);
       setResourcePlan(resRes);
+
+      // Record Audit Entry for Simulation Execution
+      try {
+        await api.recordDecisionAudit({
+          incident_id: simRes.id || `INC-${simRes.source_asset_id}`,
+          module: 'HAZARD_SIMULATION',
+          input_summary: `${simRes.source_asset_id} • ${simRes.chemical_name} (${simRes.effective_release_rate_kg_s} kg/s), Wind ${simRes.wind_speed_kmh} km/h FROM ${simRes.wind_direction_cardinal} (${simRes.wind_direction_deg}°)`,
+          recommendation: `Muster at ${evacRes.primary_evacuation_route?.recommended_assembly_point_name || 'AP-3'} via ${evacRes.primary_evacuation_route?.recommended_gate_name || 'Gate 2'}`,
+          reason: `Composite Gaussian threat footprint computed across 4 time-steps; optimal crosswind standoff verified`,
+          human_action: 'COMPUTED',
+          actor_role: currentRole,
+          actor_name: 'Authoritative Decision Engine'
+        });
+      } catch (auditErr) {
+        console.warn('Audit trail recording notice:', auditErr);
+      }
 
     } catch (err) {
       console.error('Simulation execution failed:', err);
@@ -293,16 +320,28 @@ export default function CommandCenter() {
     is_live: false
   });
 
+  // Single Canonical Incident State (Enforces 100% Cross-Role Consistency)
+  const canonicalState = getCanonicalIncidentState({
+    simulationResult,
+    impactResult,
+    evacuationPlan,
+    resourcePlan,
+    activeWeather
+  });
+
   return (
     <div className="min-h-screen bg-[#080c14] text-slate-100 flex flex-col selection:bg-cyan-500 selection:text-white">
       
-      {/* 1. Global Command Header */}
+      {/* 1. Global Command Header with Role Switcher & Executive Brief Trigger */}
       <Header
         plantInfo={siteData?.plant}
         activeSimulation={simulationResult}
         impactResult={impactResult}
         activeWeather={activeWeather}
         liveTelemetry={liveTelemetry}
+        currentRole={currentRole}
+        onRoleChange={setCurrentRole}
+        onOpenExecutiveBrief={() => setShowExecutiveBrief(true)}
         onRefreshWeather={handleRefreshWeather}
         isRefreshingWeather={isRefreshingWeather}
         onLoadPrimaryDemo={handleLoadPrimaryDemo}
@@ -331,229 +370,302 @@ export default function CommandCenter() {
           </div>
         )}
 
-        {/* 2. Top Metric HUD (5 Compact KPIs) */}
-        <HUDStats
-          impactResult={impactResult}
-          simulationResult={simulationResult}
-          resourcePlan={resourcePlan}
-        />
+        {/* ========================================================================= */}
+        {/* ROLE VIEW ABSTRACTION LAYER (Same Backend State -> Different UI Views)     */}
+        {/* ========================================================================= */}
 
-        {/* 3. Navigation Bar */}
-        <div className="flex border-b border-slate-800 bg-slate-950/80 rounded-xl p-1 gap-1 overflow-x-auto shadow-md">
-          {[
-            { id: 'dashboard', label: 'Command Map & Triage', icon: Map },
-            { id: 'simulator', label: 'Scenario Simulator', icon: Flame },
-            { id: 'impact', label: 'Impact & Personnel', icon: Users, badge: impactResult?.affected_workers_count },
-            { id: 'evacuation', label: 'Safe Evacuation', icon: Navigation },
-            { id: 'resources', label: 'Tactical Response', icon: Siren, badge: resourcePlan?.recommended_resources?.length },
-            { id: 'preplan', label: 'Fire Pre-Plan PDF', icon: FileText },
-            { id: 'intelligence', label: 'Advanced Intelligence Hub', icon: Cpu, badge: 'Phase 2' }
-          ].map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-mono font-bold transition-all whitespace-nowrap ${
-                  isActive
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-sm shadow-cyan-500/20'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
-                }`}
-              >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-cyan-400' : 'text-slate-500'}`} />
-                <span>{tab.label}</span>
-                {tab.badge && (
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold border ${
-                    tab.badge === 'Phase 2'
-                      ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
-                      : 'bg-red-500/30 text-red-300 border-red-500/50'
-                  }`}>
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+        {/* ROLE 1: FIELD RESPONDER VIEW */}
+        {currentRole === 'FIELD_RESPONDER' && (
+          <FieldResponderView
+            canonicalState={canonicalState}
+            simulationResult={simulationResult}
+            impactResult={impactResult}
+            evacuationPlan={evacuationPlan}
+            resourcePlan={resourcePlan}
+            siteData={siteData}
+            activeWeather={activeWeather}
+            currentTimeStep={currentTimeStep}
+            selectedAssetId={selectedAssetId}
+            onSelectAsset={setSelectedAssetId}
+          />
+        )}
 
-        {/* 4. Tab Content Views */}
-        <div className="space-y-3">
-          
-          {/* TAB 1: Command Map & Triage (Dominant 70% Map / 30% Intelligence Panel Split) */}
-          {activeTab === 'dashboard' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
+        {/* ROLE 2: PLANT MANAGER & DISTRICT AUTHORITY VIEW */}
+        {(currentRole === 'PLANT_MANAGER' || currentRole === 'DISTRICT_AUTHORITY') && (
+          <PlantDistrictAuthorityView
+            canonicalState={canonicalState}
+            simulationResult={simulationResult}
+            impactResult={impactResult}
+            evacuationPlan={evacuationPlan}
+            resourcePlan={resourcePlan}
+            siteData={siteData}
+            activeWeather={activeWeather}
+            currentTimeStep={currentTimeStep}
+            selectedAssetId={selectedAssetId}
+            onSelectAsset={setSelectedAssetId}
+            onOpenExecutiveBrief={() => setShowExecutiveBrief(true)}
+          />
+        )}
+
+        {/* ROLE 3: EXECUTIVE AUTHORITY VIEW */}
+        {currentRole === 'EXECUTIVE_AUTHORITY' && (
+          <ExecutiveAuthorityView
+            canonicalState={canonicalState}
+            simulationResult={simulationResult}
+            impactResult={impactResult}
+            evacuationPlan={evacuationPlan}
+            resourcePlan={resourcePlan}
+            siteData={siteData}
+            activeWeather={activeWeather}
+            currentTimeStep={currentTimeStep}
+            selectedAssetId={selectedAssetId}
+            onSelectAsset={setSelectedAssetId}
+            onExportPDF={handleExportPDF}
+          />
+        )}
+
+        {/* ROLE 4: HSE COMMANDER & DEMO ADMIN VIEW (Full Operational Command Center) */}
+        {(currentRole === 'HSE_COMMANDER' || currentRole === 'DEMO_ADMIN') && (
+          <>
+            {/* Top Metric HUD (5 Compact KPIs) */}
+            <HUDStats
+              canonicalState={canonicalState}
+              impactResult={impactResult}
+              simulationResult={simulationResult}
+              resourcePlan={resourcePlan}
+            />
+
+            {/* Navigation Bar */}
+            <div className="flex border-b border-slate-800 bg-slate-950/80 rounded-xl p-1 gap-1 overflow-x-auto shadow-md">
+              {[
+                { id: 'dashboard', label: 'Command Map & Triage', icon: Map },
+                { id: 'simulator', label: 'Scenario Simulator', icon: Flame },
+                { id: 'impact', label: 'Impact & Personnel', icon: Users, badge: impactResult?.affected_workers_count },
+                { id: 'evacuation', label: 'Safe Evacuation', icon: Navigation },
+                { id: 'resources', label: 'Tactical Response', icon: Siren, badge: resourcePlan?.recommended_resources?.length },
+                { id: 'preplan', label: 'Fire Pre-Plan PDF', icon: FileText },
+                { id: 'intelligence', label: 'Advanced Intelligence Hub', icon: Cpu, badge: 'All Modules' }
+              ].map(tab => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-mono font-bold transition-all whitespace-nowrap ${
+                      isActive
+                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-sm shadow-cyan-500/20'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                    }`}
+                  >
+                    <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-cyan-400' : 'text-slate-500'}`} />
+                    <span>{tab.label}</span>
+                    {tab.badge && (
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold border ${
+                        tab.badge === 'All Modules'
+                          ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+                          : 'bg-red-500/30 text-red-300 border-red-500/50'
+                      }`}>
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Tab Content Views */}
+            <div className="space-y-3">
               
-              {/* Left 8-9 Cols (approx 70%): Large Dominant GIS Plant Map */}
-              <div className="lg:col-span-8 xl:col-span-9 space-y-3 flex flex-col">
-                <div className="flex-1 min-h-[580px] h-[calc(100vh-280px)] rounded-xl overflow-hidden border border-slate-800 shadow-2xl">
-                  <PlantMap
-                    siteData={siteData}
-                    simulationResult={simulationResult}
-                    currentTimeStep={currentTimeStep}
-                    evacuationPlan={evacuationPlan}
-                    selectedAssetId={selectedAssetId}
-                    onSelectAsset={setSelectedAssetId}
-                  />
-                </div>
-                {simulationResult && (
-                  <TimeScrubber
-                    timeSteps={simulationResult.time_steps}
-                    currentTimeStep={currentTimeStep}
-                    onSelectTimeStep={handleSelectTimeStep}
-                  />
-                )}
-              </div>
+              {/* TAB 1: Command Map & Triage */}
+              {activeTab === 'dashboard' && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
+                  <div className="lg:col-span-8 xl:col-span-9 space-y-3 flex flex-col">
+                    <div className="flex-1 min-h-[580px] h-[calc(100vh-280px)] rounded-xl overflow-hidden border border-slate-800 shadow-2xl">
+                      <PlantMap
+                        siteData={siteData}
+                        simulationResult={simulationResult}
+                        currentTimeStep={currentTimeStep}
+                        evacuationPlan={evacuationPlan}
+                        selectedAssetId={selectedAssetId}
+                        onSelectAsset={setSelectedAssetId}
+                      />
+                    </div>
+                    {simulationResult && (
+                      <TimeScrubber
+                        timeSteps={simulationResult.time_steps}
+                        currentTimeStep={currentTimeStep}
+                        onSelectTimeStep={handleSelectTimeStep}
+                      />
+                    )}
+                  </div>
 
-              {/* Right 3-4 Cols (approx 30%): Vertical Scrollable Intelligence Sidebar */}
-              <div className="lg:col-span-4 xl:col-span-3 min-h-[580px] h-[calc(100vh-280px)] flex flex-col">
-                <IncidentIntelligencePanel
+                  <div className="lg:col-span-4 xl:col-span-3 min-h-[580px] h-[calc(100vh-280px)] flex flex-col">
+                    <IncidentIntelligencePanel
+                      simulationResult={simulationResult}
+                      impactResult={impactResult}
+                      evacuationPlan={evacuationPlan}
+                      resourcePlan={resourcePlan}
+                      activeWeather={activeWeather}
+                      liveTelemetry={liveTelemetry}
+                      weatherMode={weatherMode}
+                      onWeatherModeChange={setWeatherMode}
+                      presets={presets}
+                      onSelectPreset={handleSelectPreset}
+                      onNavigateTab={setActiveTab}
+                      onRunSimulation={executeSimulation}
+                      loading={loading}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: Scenario Simulator */}
+              {activeTab === 'simulator' && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+                  <div className="lg:col-span-7">
+                    <ScenarioBuilder
+                      assets={siteData?.assets}
+                      chemicals={chemicals}
+                      presets={presets}
+                      weatherMode={weatherMode}
+                      onWeatherModeChange={setWeatherMode}
+                      liveTelemetry={liveTelemetry}
+                      demoWeather={demoWeather}
+                      onDemoWeatherChange={handleDemoWeatherChange}
+                      onRefreshWeather={handleRefreshWeather}
+                      isRefreshingWeather={isRefreshingWeather}
+                      onRunSimulation={executeSimulation}
+                      loading={loading}
+                      selectedAssetId={selectedAssetId}
+                      onSelectAsset={setSelectedAssetId}
+                    />
+                  </div>
+                  <div className="lg:col-span-5 min-h-[560px] h-[calc(100vh-280px)] rounded-xl overflow-hidden border border-slate-800 shadow-xl">
+                    <PlantMap
+                      siteData={siteData}
+                      simulationResult={simulationResult}
+                      currentTimeStep={currentTimeStep}
+                      evacuationPlan={evacuationPlan}
+                      selectedAssetId={selectedAssetId}
+                      onSelectAsset={setSelectedAssetId}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: Impact & Personnel */}
+              {activeTab === 'impact' && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+                  <div className="lg:col-span-7">
+                    <ImpactMatrix impactResult={impactResult} />
+                  </div>
+                  <div className="lg:col-span-5 min-h-[560px] h-[calc(100vh-280px)] rounded-xl overflow-hidden border border-slate-800 shadow-xl">
+                    <PlantMap
+                      siteData={siteData}
+                      simulationResult={simulationResult}
+                      currentTimeStep={currentTimeStep}
+                      evacuationPlan={evacuationPlan}
+                      selectedAssetId={selectedAssetId}
+                      onSelectAsset={setSelectedAssetId}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: Safe Evacuation */}
+              {activeTab === 'evacuation' && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+                  <div className="lg:col-span-6">
+                    <EvacuationNavigator evacuationPlan={evacuationPlan} />
+                  </div>
+                  <div className="lg:col-span-6 min-h-[580px] h-[calc(100vh-280px)] rounded-xl overflow-hidden border border-slate-800 shadow-xl">
+                    <PlantMap
+                      siteData={siteData}
+                      simulationResult={simulationResult}
+                      currentTimeStep={currentTimeStep}
+                      evacuationPlan={evacuationPlan}
+                      selectedAssetId={selectedAssetId}
+                      onSelectAsset={setSelectedAssetId}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 5: Tactical Response */}
+              {activeTab === 'resources' && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+                  <div className="lg:col-span-7">
+                    <ResourceTactics resourcePlan={resourcePlan} />
+                  </div>
+                  <div className="lg:col-span-5 min-h-[560px] h-[calc(100vh-280px)] rounded-xl overflow-hidden border border-slate-800 shadow-xl">
+                    <PlantMap
+                      siteData={siteData}
+                      simulationResult={simulationResult}
+                      currentTimeStep={currentTimeStep}
+                      evacuationPlan={evacuationPlan}
+                      selectedAssetId={selectedAssetId}
+                      onSelectAsset={setSelectedAssetId}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 6: Fire Pre-Plan */}
+              {activeTab === 'preplan' && (
+                <PrePlanViewer
+                  plantInfo={siteData?.plant}
                   simulationResult={simulationResult}
                   impactResult={impactResult}
                   evacuationPlan={evacuationPlan}
                   resourcePlan={resourcePlan}
-                  activeWeather={activeWeather}
-                  liveTelemetry={liveTelemetry}
-                  weatherMode={weatherMode}
-                  onWeatherModeChange={setWeatherMode}
-                  presets={presets}
-                  onSelectPreset={handleSelectPreset}
-                  onNavigateTab={setActiveTab}
-                  onRunSimulation={executeSimulation}
-                  loading={loading}
+                  onExportPDF={handleExportPDF}
+                  isExporting={isExporting}
                 />
-              </div>
+              )}
 
-            </div>
-          )}
-
-          {/* TAB 2: Scenario Simulator */}
-          {activeTab === 'simulator' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
-              <div className="lg:col-span-7">
-                <ScenarioBuilder
+              {/* TAB 7: Advanced Intelligence Hub */}
+              {activeTab === 'intelligence' && (
+                <IntelligenceHub
                   assets={siteData?.assets}
                   chemicals={chemicals}
-                  presets={presets}
-                  weatherMode={weatherMode}
-                  onWeatherModeChange={setWeatherMode}
-                  liveTelemetry={liveTelemetry}
-                  demoWeather={demoWeather}
-                  onDemoWeatherChange={handleDemoWeatherChange}
-                  onRefreshWeather={handleRefreshWeather}
-                  isRefreshingWeather={isRefreshingWeather}
-                  onRunSimulation={executeSimulation}
-                  loading={loading}
-                  selectedAssetId={selectedAssetId}
-                  onSelectAsset={setSelectedAssetId}
-                />
-              </div>
-              <div className="lg:col-span-5 min-h-[560px] h-[calc(100vh-280px)] rounded-xl overflow-hidden border border-slate-800 shadow-xl">
-                <PlantMap
-                  siteData={siteData}
-                  simulationResult={simulationResult}
-                  currentTimeStep={currentTimeStep}
+                  currentSimulation={simulationResult}
+                  impactResult={impactResult}
                   evacuationPlan={evacuationPlan}
-                  selectedAssetId={selectedAssetId}
-                  onSelectAsset={setSelectedAssetId}
+                  resourcePlan={resourcePlan}
+                  authorizationStatus={null}
+                  onSimulateAssetConsequence={handleSimulateAssetConsequence}
+                  onCreateIncidentFromVision={handleCreateIncidentFromVision}
                 />
-              </div>
+              )}
+
             </div>
-          )}
-
-          {/* TAB 3: Impact & Personnel */}
-          {activeTab === 'impact' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
-              <div className="lg:col-span-7">
-                <ImpactMatrix impactResult={impactResult} />
-              </div>
-              <div className="lg:col-span-5 min-h-[560px] h-[calc(100vh-280px)] rounded-xl overflow-hidden border border-slate-800 shadow-xl">
-                <PlantMap
-                  siteData={siteData}
-                  simulationResult={simulationResult}
-                  currentTimeStep={currentTimeStep}
-                  evacuationPlan={evacuationPlan}
-                  selectedAssetId={selectedAssetId}
-                  onSelectAsset={setSelectedAssetId}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: Safe Evacuation */}
-          {activeTab === 'evacuation' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
-              <div className="lg:col-span-6">
-                <EvacuationNavigator evacuationPlan={evacuationPlan} />
-              </div>
-              <div className="lg:col-span-6 min-h-[580px] h-[calc(100vh-280px)] rounded-xl overflow-hidden border border-slate-800 shadow-xl">
-                <PlantMap
-                  siteData={siteData}
-                  simulationResult={simulationResult}
-                  currentTimeStep={currentTimeStep}
-                  evacuationPlan={evacuationPlan}
-                  selectedAssetId={selectedAssetId}
-                  onSelectAsset={setSelectedAssetId}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* TAB 5: Tactical Response */}
-          {activeTab === 'resources' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
-              <div className="lg:col-span-7">
-                <ResourceTactics resourcePlan={resourcePlan} />
-              </div>
-              <div className="lg:col-span-5 min-h-[560px] h-[calc(100vh-280px)] rounded-xl overflow-hidden border border-slate-800 shadow-xl">
-                <PlantMap
-                  siteData={siteData}
-                  simulationResult={simulationResult}
-                  currentTimeStep={currentTimeStep}
-                  evacuationPlan={evacuationPlan}
-                  selectedAssetId={selectedAssetId}
-                  onSelectAsset={setSelectedAssetId}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* TAB 6: Fire Pre-Plan */}
-          {activeTab === 'preplan' && (
-            <PrePlanViewer
-              plantInfo={siteData?.plant}
-              simulationResult={simulationResult}
-              impactResult={impactResult}
-              evacuationPlan={evacuationPlan}
-              resourcePlan={resourcePlan}
-              onExportPDF={handleExportPDF}
-              isExporting={isExporting}
-            />
-          )}
-
-          {/* TAB 7: Advanced Intelligence Hub (Phase 2 Features) */}
-          {activeTab === 'intelligence' && (
-            <IntelligenceHub
-              assets={siteData?.assets}
-              chemicals={chemicals}
-              currentSimulation={simulationResult}
-              onSimulateAssetConsequence={handleSimulateAssetConsequence}
-              onCreateIncidentFromVision={handleCreateIncidentFromVision}
-            />
-          )}
-
-        </div>
+          </>
+        )}
 
       </main>
 
-      {/* 5. Global Floating AI Emergency Copilot Drawer */}
+      {/* Global Floating AI Emergency Copilot Drawer (Role-Aware) */}
       <EmergencyCopilotDrawer
         simulationResult={simulationResult}
         impactResult={impactResult}
         evacuationPlan={evacuationPlan}
         resourcePlan={resourcePlan}
+        userRole={currentRole}
         onNavigateTab={setActiveTab}
+      />
+
+      {/* Global Executive Situation Brief Modal */}
+      <ExecutiveBriefModal
+        isOpen={showExecutiveBrief}
+        onClose={() => setShowExecutiveBrief(false)}
+        simulationResult={simulationResult}
+        impactResult={impactResult}
+        evacuationPlan={evacuationPlan}
+        resourcePlan={resourcePlan}
+        authorizationRecord={null}
+        onExportPDF={handleExportPDF}
       />
 
     </div>

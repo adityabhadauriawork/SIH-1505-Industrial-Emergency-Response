@@ -312,15 +312,15 @@ class ResourceService:
         else:
             foam_l = 0.0
 
-        # PPE Recommendation
+        # PPE Recommendation (Safer Prototype Decision-Support Wording)
         if is_toxic_gas and not is_fire_or_explosion:
-            ppe_str = "Level A Fully Encapsulated Gas-Tight Suit (Trellchem) with positive-pressure SCBA (NIOSH Certified)"
+            ppe_str = "Level A fully encapsulated gas-tight suit with positive-pressure SCBA — verify against site PPE requirements"
         elif is_fire_or_explosion:
-            ppe_str = "NFPA Structural Firefighting Turnout Bunker Gear with aluminized proximity entry hood & positive-pressure SCBA"
+            ppe_str = "NFPA structural firefighting turnout bunker gear with aluminized proximity entry hood & positive-pressure SCBA"
         elif is_hydrocarbon_flammable:
-            ppe_str = "Flash-Fire Resistant Nomex III A Coveralls, Chemical Splash Shield, Level B SCBA"
+            ppe_str = "Flash-fire resistant Nomex III A coveralls, chemical splash shield, Level B SCBA"
         else:
-            ppe_str = "Level B Chemical Resistant Splash Suit with positive-pressure SCBA"
+            ppe_str = "Level B chemical resistant splash suit with positive-pressure SCBA"
 
         # Isolation Perimeter (1.25x Red Threat Zone reach or minimum 300m)
         isolation_perimeter_m = round(max(300.0, red_reach_m * 1.25), 1)

@@ -151,10 +151,12 @@ class AnalyticsService:
 
         chem_breakdowns = []
         for chem_name, inc_list in chem_map.items():
+            chem_id = inc_list[0].chemical_id if inc_list else "CHEM-NH3"
             chem_breakdowns.append(ChemicalBreakdownItem(
+                chemical_id=chem_id,
                 chemical_name=chem_name,
                 incident_count=len(inc_list),
-                percentage_of_total=round((len(inc_list) / total_count) * 100, 1),
+                percentage=round((len(inc_list) / total_count) * 100, 1),
                 avg_release_rate_kg_s=round(sum(x.release_rate_kg_s for x in inc_list) / len(inc_list), 1)
             ))
         chem_breakdowns.sort(key=lambda x: x.incident_count, reverse=True)
@@ -162,6 +164,7 @@ class AnalyticsService:
 
         # 3. Severity Distribution
         sev_counts = {"CRITICAL": 0, "HIGH": 0, "MODERATE": 0, "LOW": 0}
+        sev_colors = {"CRITICAL": "#ef4444", "HIGH": "#f97316", "MODERATE": "#f59e0b", "LOW": "#10b981"}
         for i in incidents:
             if i.severity_category in sev_counts:
                 sev_counts[i.severity_category] += 1
@@ -172,7 +175,8 @@ class AnalyticsService:
             SeverityDistributionItem(
                 category=cat,
                 count=cnt,
-                percentage=round((cnt / total_count) * 100, 1)
+                percentage=round((cnt / total_count) * 100, 1),
+                color=sev_colors.get(cat, "#64748b")
             )
             for cat, cnt in sev_counts.items()
         ]

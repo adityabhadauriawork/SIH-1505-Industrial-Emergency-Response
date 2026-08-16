@@ -749,6 +749,12 @@ class PrePlanService:
                 Paragraph("Simplified 2D/3D flat terrain representation with standard surface roughness (z₀ = 0.5m)", body_style),
                 Paragraph("<b>Road & Worker Graph:</b>", body_bold),
                 Paragraph("Prototype facility CAD/GIS network with obstacle avoidance pathfinding", body_style)
+            ],
+            [
+                Paragraph("<b>Domino Cascade:</b>", body_bold),
+                Paragraph("Screening cascade vulnerability evaluated across adjacent storage units & ESD headers", body_style),
+                Paragraph("<b>Decision Audit Ref:</b>", body_bold),
+                Paragraph(f"AUD-{datetime.utcnow().strftime('%Y%m%d')}-{resource_plan.incident_id[:8]} (Prototype Log)", body_style)
             ]
         ]
         trace_table = Table(trace_data, colWidths=[115, 145, 115, 148])

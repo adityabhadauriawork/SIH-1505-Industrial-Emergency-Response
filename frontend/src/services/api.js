@@ -167,7 +167,7 @@ export const api = {
     window.URL.revokeObjectURL(url);
   },
 
-  // 10. Phase-2 Intelligence Hub
+  // 10. Intelligence Hub & Final Capabilities
   async compareWhatIfScenarios(payload) {
     const res = await fetch(`${API_BASE}/intelligence/whatif/compare`, {
       method: 'POST',
@@ -220,6 +220,89 @@ export const api = {
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));
       throw new Error(err.detail || 'Copilot query failed');
+    }
+    return res.json();
+  },
+
+  // 11. Domino / Cascade Screening Risk
+  async getDominoRisk(simulationResult, impactResult = null) {
+    const res = await fetch(`${API_BASE}/intelligence/domino-risk`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        simulation_result: simulationResult,
+        impact_result: impactResult
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || 'Domino risk screening failed');
+    }
+    return res.json();
+  },
+
+  // 12. Incident Timeline
+  async getIncidentTimeline(simulationResult, impactResult = null, evacuationPlan = null, resourcePlan = null, authStatus = null) {
+    const res = await fetch(`${API_BASE}/intelligence/timeline`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        simulation_result: simulationResult,
+        impact_result: impactResult,
+        evacuation_plan: evacuationPlan,
+        resource_plan: resourcePlan,
+        authorization_status: authStatus
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || 'Timeline generation failed');
+    }
+    return res.json();
+  },
+
+  // 13. Decision Audit Trail
+  async getDecisionAuditTrail(incidentId = null, module = null, limit = 50) {
+    const params = [];
+    if (incidentId) params.push(`incident_id=${encodeURIComponent(incidentId)}`);
+    if (module) params.push(`module=${encodeURIComponent(module)}`);
+    if (limit) params.push(`limit=${limit}`);
+    const queryStr = params.length ? `?${params.join('&')}` : '';
+
+    const res = await fetch(`${API_BASE}/intelligence/audit-trail${queryStr}`);
+    if (!res.ok) throw new Error(`Failed to load decision audit trail: ${res.statusText}`);
+    return res.json();
+  },
+
+  async recordDecisionAudit(payload) {
+    const res = await fetch(`${API_BASE}/intelligence/audit-trail/record`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || 'Failed to record audit entry');
+    }
+    return res.json();
+  },
+
+  // 14. Executive Situation Brief
+  async getExecutiveSituationBrief(simulationResult, impactResult = null, evacuationPlan = null, resourcePlan = null, authRecord = null) {
+    const res = await fetch(`${API_BASE}/intelligence/executive-brief`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        simulation_result: simulationResult,
+        impact_result: impactResult,
+        evacuation_plan: evacuationPlan,
+        resource_plan: resourcePlan,
+        authorization_record: authRecord
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || 'Executive situation brief generation failed');
     }
     return res.json();
   }

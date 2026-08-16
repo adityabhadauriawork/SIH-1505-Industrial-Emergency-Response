@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   ShieldAlert, Radio, Wind, Thermometer, Clock, 
   FileText, Play, RefreshCw, AlertTriangle, CheckCircle2, 
-  CloudSun, Info, ChevronDown, ChevronUp 
+  CloudSun, Info, ChevronDown, ChevronUp, UserCheck, Shield 
 } from 'lucide-react';
 
 export default function Header({ 
@@ -11,6 +11,9 @@ export default function Header({
   impactResult, 
   activeWeather, 
   liveTelemetry,
+  currentRole = 'HSE_COMMANDER',
+  onRoleChange,
+  onOpenExecutiveBrief,
   onRefreshWeather,
   isRefreshingWeather,
   onLoadPrimaryDemo, 
@@ -76,106 +79,147 @@ export default function Header({
           </div>
         </div>
 
-        {/* Center: Unified Active Simulation Meteorological Feed with Expandable Details */}
-        <div className="relative">
-          <div className="hidden lg:flex items-center space-x-3.5 bg-slate-900/80 px-3.5 py-1.5 rounded-lg border border-slate-800 font-mono text-xs">
-            {/* Status Indicator */}
-            <div className="flex items-center space-x-2">
-              <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-              <span className="text-slate-400">STATE:</span>
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${riskBadgeStyles}`}>
-                {riskCategory}
-              </span>
-            </div>
-
-            <div className="h-4 w-[1px] bg-slate-800" />
-
-            {/* Active Weather Summary */}
-            <div className="flex items-center space-x-2">
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1.5 ${
-                isLive 
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50' 
-                  : 'bg-amber-500/20 text-amber-300 border-amber-500/50'
-              }`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
-                <span>{isLive ? 'LIVE' : 'DEMO'}</span>
-              </span>
-
-              <div className="flex items-center space-x-1.5 text-slate-200 font-bold">
-                <Wind className="w-3.5 h-3.5 text-cyan-400" />
-                <span>{activeWeather?.wind_speed_kmh ?? 8.0} km/h</span>
-                <span className="text-cyan-400">
-                  FROM {activeWeather?.wind_direction_cardinal || 'NE'} ({activeWeather?.wind_direction_deg ?? 45}°)
+        {/* Center: Meteorological Feed + Role Switcher */}
+        <div className="flex items-center space-x-3">
+          
+          {/* Unified Active Meteorological Feed with Expandable Details */}
+          <div className="relative hidden xl:block">
+            <div className="flex items-center space-x-3.5 bg-slate-900/80 px-3.5 py-1.5 rounded-lg border border-slate-800 font-mono text-xs">
+              {/* Status Indicator */}
+              <div className="flex items-center space-x-2">
+                <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                <span className="text-slate-400">STATE:</span>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${riskBadgeStyles}`}>
+                  {riskCategory}
                 </span>
               </div>
 
-              <div className="flex items-center space-x-1 text-slate-300 pl-1">
-                <Thermometer className="w-3.5 h-3.5 text-amber-400" />
-                <span>{activeWeather?.temperature_c ?? 32}°C</span>
-              </div>
+              <div className="h-4 w-[1px] bg-slate-800" />
 
-              {/* Expand Details Trigger */}
-              <button
-                type="button"
-                onClick={() => setShowWeatherDetails(!showWeatherDetails)}
-                className="p-1 rounded text-slate-400 hover:text-cyan-300 hover:bg-slate-800 transition-colors ml-0.5"
-                title="Toggle Meteorological Details"
-              >
-                {showWeatherDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              </button>
+              {/* Active Weather Summary */}
+              <div className="flex items-center space-x-2">
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1.5 ${
+                  isLive 
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50' 
+                    : 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
+                  <span>{isLive ? 'LIVE' : 'DEMO'}</span>
+                </span>
 
-              {/* Refresh Live Ambient Weather button */}
-              {onRefreshWeather && (
+                <div className="flex items-center space-x-1.5 text-slate-200 font-bold">
+                  <Wind className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>{activeWeather?.wind_speed_kmh ?? 8.0} km/h</span>
+                  <span className="text-cyan-400">
+                    FROM {activeWeather?.wind_direction_cardinal || 'NE'} ({activeWeather?.wind_direction_deg ?? 45}°)
+                  </span>
+                </div>
+
+                <div className="flex items-center space-x-1 text-slate-300 pl-1">
+                  <Thermometer className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{activeWeather?.temperature_c ?? 32}°C</span>
+                </div>
+
+                {/* Expand Details Trigger */}
                 <button
                   type="button"
-                  onClick={onRefreshWeather}
-                  disabled={isRefreshingWeather}
-                  className="p-1 text-slate-400 hover:text-cyan-400 transition-colors"
-                  title="Refresh Open-Meteo live feed"
+                  onClick={() => setShowWeatherDetails(!showWeatherDetails)}
+                  className="p-1 rounded text-slate-400 hover:text-cyan-300 hover:bg-slate-800 transition-colors ml-0.5"
+                  title="Toggle Meteorological Details"
                 >
-                  <RefreshCw className={`w-3 h-3 ${isRefreshingWeather ? 'animate-spin text-cyan-400' : ''}`} />
+                  {showWeatherDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                 </button>
-              )}
+
+                {/* Refresh Live Ambient Weather button */}
+                {onRefreshWeather && (
+                  <button
+                    type="button"
+                    onClick={onRefreshWeather}
+                    disabled={isRefreshingWeather}
+                    className="p-1 text-slate-400 hover:text-cyan-400 transition-colors"
+                    title="Refresh Open-Meteo live feed"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isRefreshingWeather ? 'animate-spin text-cyan-400' : ''}`} />
+                  </button>
+                )}
+              </div>
+
+              <div className="h-4 w-[1px] bg-slate-800" />
+
+              {/* Clock */}
+              <div className="flex items-center space-x-1.5 text-slate-300">
+                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                <span>{timeStr}</span>
+              </div>
             </div>
 
-            <div className="h-4 w-[1px] bg-slate-800" />
+            {/* Expandable Meteorological Details Popover */}
+            {showWeatherDetails && (
+              <div className="absolute right-0 top-full mt-2 w-80 bg-slate-950 border border-slate-700 rounded-xl p-3 shadow-2xl z-50 font-mono text-[11px] space-y-2 text-slate-300">
+                <div className="flex justify-between items-center border-b border-slate-800 pb-1 font-bold text-white">
+                  <span className="flex items-center gap-1.5">
+                    <CloudSun className="w-3.5 h-3.5 text-cyan-400" />
+                    Meteorological Intel Profile
+                  </span>
+                  <span className="text-[10px] text-slate-500">{isLive ? 'Open-Meteo REST' : 'Scenario Parameter'}</span>
+                </div>
 
-            {/* Clock */}
-            <div className="flex items-center space-x-1.5 text-slate-300">
-              <Clock className="w-3.5 h-3.5 text-slate-400" />
-              <span>{timeStr}</span>
-            </div>
+                <div className="grid grid-cols-2 gap-2 text-[10px]">
+                  <div>Source: <b className="text-white">{weatherSource}</b></div>
+                  <div>Mode: <b className={isLive ? 'text-emerald-400' : 'text-amber-400'}>{activeWeather?.mode}</b></div>
+                  <div>Station Coords: <span className="text-slate-400">21.685°N, 72.575°E</span></div>
+                  <div>Pasquill Stability: <b className="text-cyan-300">Class D (Neutral)</b></div>
+                  <div>Ambient Humidity: <span className="text-slate-400">65% Standard</span></div>
+                  <div>Surface Roughness: <span className="text-slate-400">z₀ = 0.5m (Industrial)</span></div>
+                </div>
+
+                <div className="text-[10px] text-slate-400 italic bg-slate-900/80 p-1.5 rounded border border-slate-800">
+                  Plume propagates downwind towards <b>{((activeWeather?.wind_direction_deg + 180) % 360).toFixed(0)}°</b>.
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Expandable Meteorological Details Popover (Progressive Disclosure) */}
-          {showWeatherDetails && (
-            <div className="absolute right-0 top-full mt-2 w-80 bg-slate-950 border border-slate-700 rounded-xl p-3 shadow-2xl z-50 font-mono text-[11px] space-y-2 text-slate-300">
-              <div className="flex justify-between items-center border-b border-slate-800 pb-1 font-bold text-white">
-                <span className="flex items-center gap-1.5">
-                  <CloudSun className="w-3.5 h-3.5 text-cyan-400" />
-                  Meteorological Intel Profile
-                </span>
-                <span className="text-[10px] text-slate-500">{isLive ? 'Open-Meteo REST' : 'Scenario Parameter'}</span>
-              </div>
+          {/* Prototype Role View Selector */}
+          <div className="flex items-center space-x-1.5 bg-slate-900/90 px-3 py-1.5 rounded-lg border border-cyan-500/40 font-mono text-xs shadow-sm shadow-cyan-500/10">
+            <UserCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+            <span className="text-[10px] text-slate-400 font-bold hidden sm:inline">VIEW AS:</span>
+            <select
+              value={currentRole}
+              onChange={(e) => onRoleChange && onRoleChange(e.target.value)}
+              className="bg-transparent border-0 text-cyan-300 font-bold text-xs focus:outline-none cursor-pointer"
+              title="Select Prototype Information Abstraction Role"
+            >
+              <option value="HSE_COMMANDER" className="bg-slate-900 text-white">HSE Commander</option>
+              <option value="FIELD_RESPONDER" className="bg-slate-900 text-white">Field Responder</option>
+              <option value="PLANT_MANAGER" className="bg-slate-900 text-white">Plant Manager</option>
+              <option value="DISTRICT_AUTHORITY" className="bg-slate-900 text-white">District Authority</option>
+              <option value="EXECUTIVE_AUTHORITY" className="bg-slate-900 text-white">Executive Authority</option>
+              <option value="DEMO_ADMIN" className="bg-slate-900 text-white">Demo Admin</option>
+            </select>
+            <span className="text-[9px] bg-cyan-950 text-cyan-400 px-1.5 py-0.2 rounded font-bold border border-cyan-500/30 hidden md:inline">
+              ROLE VIEW
+            </span>
+          </div>
 
-              <div className="grid grid-cols-2 gap-2 text-[10px]">
-                <div>Source: <b className="text-white">{weatherSource}</b></div>
-                <div>Mode: <b className={isLive ? 'text-emerald-400' : 'text-amber-400'}>{activeWeather?.mode}</b></div>
-                <div>Station Coords: <span className="text-slate-400">21.685°N, 72.575°E</span></div>
-                <div>Pasquill Stability: <b className="text-cyan-300">Class D (Neutral)</b></div>
-                <div>Ambient Humidity: <span className="text-slate-400">65% Standard</span></div>
-                <div>Surface Roughness: <span className="text-slate-400">z₀ = 0.5m (Industrial)</span></div>
-              </div>
-
-              <div className="text-[10px] text-slate-400 italic bg-slate-900/80 p-1.5 rounded border border-slate-800">
-                Plume propagates downwind towards <b>{((activeWeather?.wind_direction_deg + 180) % 360).toFixed(0)}°</b>.
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Right: Quick Action Controls */}
-        <div className="flex items-center space-x-2.5">
+        <div className="flex items-center space-x-2">
+          
+          {/* Executive Brief Button */}
+          {hasIncident && onOpenExecutiveBrief && (
+            <button
+              type="button"
+              onClick={onOpenExecutiveBrief}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white text-xs font-mono font-bold border border-blue-400/50 shadow-md shadow-blue-500/20 transition-all active:scale-95"
+              title="Generate One-Click Executive Situation Brief"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Executive Brief</span>
+            </button>
+          )}
+
           {/* Quick Primary Demo Trigger */}
           <button
             type="button"

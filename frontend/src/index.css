@@ -36,6 +36,73 @@
   filter: brightness(0.65) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7) !important;
 }
 
+/* Leaflet Dark Theme Popup Overrides (High Contrast, Sleek Command Center) */
+.leaflet-popup-content-wrapper,
+.leaflet-dark-popup .leaflet-popup-content-wrapper {
+  background-color: #0b1120 !important;
+  color: #f1f5f9 !important;
+  border: 1px solid #334155 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.9), 0 0 15px rgba(6, 182, 212, 0.2) !important;
+  padding: 0 !important;
+  backdrop-filter: blur(16px);
+}
+
+.leaflet-popup-content {
+  margin: 10px 12px !important;
+  line-height: 1.4 !important;
+}
+
+.leaflet-popup-tip-container {
+  margin-top: -1px;
+}
+
+.leaflet-popup-tip,
+.leaflet-dark-popup .leaflet-popup-tip {
+  background-color: #0b1120 !important;
+  border: 1px solid #334155 !important;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4) !important;
+}
+
+.leaflet-popup-close-button,
+.leaflet-dark-popup .leaflet-popup-close-button {
+  color: #94a3b8 !important;
+  padding: 6px 8px !important;
+  top: 4px !important;
+  right: 6px !important;
+  font-size: 16px !important;
+  font-weight: bold !important;
+  transition: color 0.15s ease-in-out;
+}
+
+.leaflet-popup-close-button:hover,
+.leaflet-dark-popup .leaflet-popup-close-button:hover {
+  color: #38bdf8 !important;
+  background: transparent !important;
+}
+
+.leaflet-tooltip.leaflet-dark-tooltip {
+  background-color: #0b1120 !important;
+  color: #f1f5f9 !important;
+  border: 1px solid #334155 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7) !important;
+  padding: 6px 10px !important;
+}
+
+.leaflet-tooltip-top:before {
+  border-top-color: #0b1120 !important;
+}
+.leaflet-tooltip-bottom:before {
+  border-bottom-color: #0b1120 !important;
+}
+.leaflet-tooltip-left:before {
+  border-left-color: #0b1120 !important;
+}
+.leaflet-tooltip-right:before {
+  border-right-color: #0b1120 !important;
+}
+
 /* Custom glowing pulse animations */
 @keyframes pulse-glow-red {
   0%, 100% {
